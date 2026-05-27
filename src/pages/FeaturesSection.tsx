@@ -1,21 +1,35 @@
+/**
+ * REFACTORED: Features Section — Apple Tablet UI
+ *
+ * Drop-in replacement for the features section + FeatureCard in Homepage.tsx.
+ * Preserves all existing logic (FEATURES data, auto-rotation, dot nav, transitions).
+ *
+ * Changes:
+ *  - FeatureCard removed (replaced by inline tablet layout)
+ *  - Features section wrapped in AppleTabletFeatures component
+ *  - Left side: stacked 3-card image carousel (prev/next peek blurred behind active)
+ *  - Right side: fade-transition text content panel
+ *  - Dot indicators inside the tablet screen
+ *  - Navbar & chat button z-index notes preserved
+ *
+ * Usage in Homepage.tsx:
+ *  1. Remove the existing <FeatureCard …> component definition
+ *  2. Replace the entire <div id="features" …>…</div> block with <AppleTabletFeatures />
+ *  3. Import AppleTabletFeatures from this file (or paste inline)
+ *  4. Keep all state/refs at the Homepage level and pass as props (shown below),
+ *     OR use the self-contained version at the bottom of this file.
+ */
+
 import {
-  MessageCircle,
-  Banknote,
-  Info,
-  Mail,
   ArrowRight,
-  Sparkles,
-  Menu,
-  X,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import logo from "../assets/logo.png";
-import sxaint_promo_hp from "../assets/mp4_files/sxaint_promo_hp.mp4.mp4";
 
-/* ─── Data ───────────────────────────────────────────────────────── */
+/* ─── Data (keep your existing FEATURES array — copied here for reference) ── */
 const FEATURES = [
   {
     id: 0,
@@ -77,12 +91,9 @@ const FEATURES = [
   },
 ];
 
-const NAV_LINKS = [
-  { href: "#features", Icon: Sparkles },
-  { href: "#pricing", Icon: Banknote },
-  { href: "#about", Icon: Info },
-  { href: "#contact", Icon: Mail },
-];
+/* ─── Types ──────────────────────────────────────────────────────── */
+type Feature = (typeof FEATURES)[0];
+type CardSlot = "active" | "prev" | "next" | "hidden";
 
 /* ─── ImageCarouselPane ───────────────────────────────────────────── */
 function ImageCarouselPane({
@@ -94,7 +105,7 @@ function ImageCarouselPane({
   onNext,
   onDot,
 }: {
-  features: typeof FEATURES;
+  features: Feature[];
   current: number;
   isAnimating: boolean;
   direction: "left" | "right" | null;
@@ -103,12 +114,12 @@ function ImageCarouselPane({
   onDot: (i: number) => void;
 }) {
   const total = features.length;
+
   const prevIdx = (current - 1 + total) % total;
   const nextIdx = (current + 1) % total;
 
-  const slotStyle = (
-    slot: "active" | "prev" | "next" | "hidden",
-  ): React.CSSProperties => {
+  /* Card slot → visual transform */
+  const slotStyle = (slot: CardSlot): React.CSSProperties => {
     const baseTransition =
       "transform 0.55s cubic-bezier(0.34,1.1,0.64,1), opacity 0.45s ease, filter 0.45s ease, box-shadow 0.45s ease";
 
@@ -147,6 +158,7 @@ function ImageCarouselPane({
         cursor: "pointer",
       };
     }
+    /* hidden — out-of-view on whichever side we're animating toward */
     return {
       transform:
         direction === "left"
@@ -160,7 +172,8 @@ function ImageCarouselPane({
     };
   };
 
-  const getSlot = (idx: number): "active" | "prev" | "next" | "hidden" => {
+  /* Which slot does each index occupy? */
+  const getSlot = (idx: number): CardSlot => {
     if (idx === current) return "active";
     if (idx === prevIdx) return "prev";
     if (idx === nextIdx) return "next";
@@ -172,28 +185,27 @@ function ImageCarouselPane({
       className="relative flex flex-col items-center justify-center"
       style={{ width: "100%", height: "100%" }}
     >
+      {/* Card stack */}
       <div
         className="relative w-full"
-        style={{ height: "400px", perspective: "900px" }}
+        style={{ height: "260px", perspective: "900px" }}
       >
         {features.map((f, idx) => {
           const slot = getSlot(idx);
           return (
             <div
               key={f.id}
-              onClick={
-                slot === "prev" ? onPrev : slot === "next" ? onNext : undefined
-              }
+              onClick={slot === "prev" ? onPrev : slot === "next" ? onNext : undefined}
               style={{
                 position: "absolute",
                 top: "50%",
                 left: "50%",
-                width: "70%",
-                maxWidth: "400px",
+                width: "62%",
+                maxWidth: "300px",
                 aspectRatio: "4/3",
-                marginTop: "-120px",
-                marginLeft: "-35%",
-                borderRadius: "20px",
+                marginTop: "-80px",
+                marginLeft: "-31%",
+                borderRadius: "16px",
                 overflow: "hidden",
                 transformOrigin: "center center",
                 willChange: "transform, opacity, filter",
@@ -208,61 +220,58 @@ function ImageCarouselPane({
                   height: "100%",
                   objectFit: "cover",
                   display: "block",
-                  transform:
-                    isAnimating && slot === "active"
-                      ? "scale(1.04)"
-                      : "scale(1)",
+                  transform: isAnimating && slot === "active" ? "scale(1.04)" : "scale(1)",
                   transition: "transform 0.55s ease",
                 }}
               />
+              {/* Tag chip */}
               {slot === "active" && (
                 <div
                   style={{
                     position: "absolute",
-                    bottom: "15px",
-                    left: "15px",
+                    bottom: "10px",
+                    left: "10px",
                     background: "#007bff",
                     color: "#fff",
-                    fontSize: "12px",
+                    fontSize: "10px",
                     fontWeight: 700,
                     letterSpacing: "0.04em",
-                    padding: "6px 14px",
-                    borderRadius: "24px",
+                    padding: "4px 10px",
+                    borderRadius: "20px",
                     opacity: isAnimating ? 0 : 1,
-                    transform: isAnimating
-                      ? "translateY(4px)"
-                      : "translateY(0)",
-                    transition:
-                      "opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s",
+                    transform: isAnimating ? "translateY(4px)" : "translateY(0)",
+                    transition: "opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s",
                   }}
                 >
                   {f.tag}
                 </div>
               )}
+              {/* Counter badge on active */}
               {slot === "active" && (
                 <div
                   style={{
                     position: "absolute",
-                    top: "15px",
-                    right: "15px",
-                    background: "rgba(255,255,255,0.92)",
+                    top: "10px",
+                    right: "10px",
+                    background: "rgba(255,255,255,0.88)",
                     backdropFilter: "blur(4px)",
                     color: "#007bff",
-                    fontSize: "12px",
+                    fontSize: "10px",
                     fontWeight: 700,
-                    padding: "5px 12px",
-                    borderRadius: "24px",
+                    padding: "3px 8px",
+                    borderRadius: "20px",
                   }}
                 >
                   {current + 1} / {total}
                 </div>
               )}
+              {/* Gradient overlay */}
               <div
                 style={{
                   position: "absolute",
                   inset: 0,
                   background:
-                    "linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 60%)",
+                    "linear-gradient(to top, rgba(0,0,0,0.25) 0%, transparent 60%)",
                   pointerEvents: "none",
                 }}
               />
@@ -271,9 +280,10 @@ function ImageCarouselPane({
         })}
       </div>
 
+      {/* Dot nav */}
       <div
-        className="flex items-center justify-center gap-3"
-        style={{ marginTop: "30px" }}
+        className="flex items-center justify-center gap-2"
+        style={{ marginTop: "18px" }}
       >
         {features.map((_, i) => (
           <button
@@ -281,27 +291,27 @@ function ImageCarouselPane({
             onClick={() => onDot(i)}
             aria-label={`Go to feature ${i + 1}`}
             style={{
-              width: i === current ? "28px" : "10px",
-              height: "10px",
+              width: i === current ? "22px" : "8px",
+              height: "8px",
               borderRadius: "20px",
               background: i === current ? "#007bff" : "#d1d5db",
               border: "none",
               padding: 0,
               cursor: "pointer",
-              transition:
-                "width 0.35s cubic-bezier(0.34,1.1,0.64,1), background 0.3s ease",
+              transition: "width 0.35s cubic-bezier(0.34,1.1,0.64,1), background 0.3s ease",
             }}
           />
         ))}
       </div>
 
-      <div className="flex items-center gap-4" style={{ marginTop: "24px" }}>
+      {/* Prev / Next arrow buttons (bottom) */}
+      <div className="flex items-center gap-3" style={{ marginTop: "14px" }}>
         <button
           onClick={onPrev}
           aria-label="Previous feature"
           style={{
-            width: "44px",
-            height: "44px",
+            width: "32px",
+            height: "32px",
             borderRadius: "50%",
             border: "1.5px solid #e5e7eb",
             background: "#fff",
@@ -319,14 +329,14 @@ function ImageCarouselPane({
             (e.currentTarget as HTMLButtonElement).style.background = "#fff";
           }}
         >
-          <ChevronLeft size={20} color="#374151" />
+          <ChevronLeft size={15} color="#374151" />
         </button>
         <button
           onClick={onNext}
           aria-label="Next feature"
           style={{
-            width: "44px",
-            height: "44px",
+            width: "32px",
+            height: "32px",
             borderRadius: "50%",
             border: "none",
             background: "#007bff",
@@ -335,7 +345,7 @@ function ImageCarouselPane({
             justifyContent: "center",
             cursor: "pointer",
             transition: "background 0.2s, box-shadow 0.2s",
-            boxShadow: "0 4px 14px rgba(0,123,255,0.4)",
+            boxShadow: "0 4px 14px rgba(0,123,255,0.35)",
           }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLButtonElement).style.background = "#0056b3";
@@ -344,7 +354,7 @@ function ImageCarouselPane({
             (e.currentTarget as HTMLButtonElement).style.background = "#007bff";
           }}
         >
-          <ChevronRight size={20} color="#fff" />
+          <ChevronRight size={15} color="#fff" />
         </button>
       </div>
     </div>
@@ -356,7 +366,7 @@ function TextContentPane({
   feature,
   isAnimating,
 }: {
-  feature: (typeof FEATURES)[0];
+  feature: Feature;
   isAnimating: boolean;
 }) {
   return (
@@ -365,48 +375,50 @@ function TextContentPane({
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        gap: "24px",
-        padding: "48px 40px",
+        gap: "18px",
+        padding: "28px 32px",
         height: "100%",
         opacity: isAnimating ? 0 : 1,
         transform: isAnimating ? "translateY(10px)" : "translateY(0)",
         transition: "opacity 0.38s ease, transform 0.38s ease",
       }}
     >
+      {/* Subtitle chip */}
       <span
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "5px",
           background: "#eff6ff",
           color: "#007bff",
-          fontSize: "13px",
+          fontSize: "11px",
           fontWeight: 700,
           letterSpacing: "0.05em",
-          padding: "8px 16px",
-          borderRadius: "24px",
+          padding: "5px 12px",
+          borderRadius: "20px",
           width: "fit-content",
         }}
       >
-        <Sparkles size={14} />
+        <Sparkles size={11} />
         {feature.subtitle}
       </span>
 
+      {/* Title */}
       <div>
         <h3
           style={{
-            fontSize: "clamp(1.8rem, 3vw, 2.2rem)",
+            fontSize: "clamp(1.25rem, 2.5vw, 1.65rem)",
             fontWeight: 800,
             color: "#0f172a",
-            lineHeight: 1.3,
-            margin: "0 0 12px",
+            lineHeight: 1.25,
+            margin: "0 0 8px",
           }}
         >
           {feature.title}
         </h3>
         <p
           style={{
-            fontSize: "1rem",
+            fontSize: "0.85rem",
             color: "#64748b",
             lineHeight: 1.7,
             margin: 0,
@@ -416,6 +428,7 @@ function TextContentPane({
         </p>
       </div>
 
+      {/* Bullets */}
       <ul
         style={{
           listStyle: "none",
@@ -423,7 +436,7 @@ function TextContentPane({
           padding: 0,
           display: "flex",
           flexDirection: "column",
-          gap: "14px",
+          gap: "9px",
         }}
       >
         {feature.bullets.map((b, i) => (
@@ -432,32 +445,33 @@ function TextContentPane({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "12px",
-              fontSize: "0.95rem",
+              gap: "9px",
+              fontSize: "0.83rem",
               color: "#374151",
               opacity: isAnimating ? 0 : 1,
               transform: isAnimating ? "translateX(8px)" : "translateX(0)",
               transition: `opacity 0.35s ease ${0.08 + i * 0.06}s, transform 0.35s ease ${0.08 + i * 0.06}s`,
             }}
           >
-            <CheckCircle2 size={18} color="#007bff" style={{ flexShrink: 0 }} />
+            <CheckCircle2 size={14} color="#007bff" style={{ flexShrink: 0 }} />
             {b}
           </li>
         ))}
       </ul>
 
+      {/* CTA */}
       <button
         style={{
-          marginTop: "8px",
+          marginTop: "4px",
           display: "inline-flex",
           alignItems: "center",
-          gap: "10px",
+          gap: "7px",
           background: "#007bff",
           color: "#fff",
-          fontSize: "0.95rem",
+          fontSize: "0.82rem",
           fontWeight: 700,
-          padding: "14px 28px",
-          borderRadius: "14px",
+          padding: "10px 20px",
+          borderRadius: "12px",
           border: "none",
           cursor: "pointer",
           width: "fit-content",
@@ -467,22 +481,21 @@ function TextContentPane({
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.background = "#0056b3";
-          (e.currentTarget as HTMLButtonElement).style.transform =
-            "scale(1.04)";
+          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.04)";
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLButtonElement).style.background = "#007bff";
           (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
         }}
       >
-        Get Started <ArrowRight size={18} />
+        Get Started <ArrowRight size={14} />
       </button>
     </div>
   );
 }
 
-/* ─── AppleTabletFeatures ───────────────────────────────── */
-function AppleTabletFeatures() {
+/* ─── AppleTabletFeatures — self-contained drop-in ───────────────── */
+export function AppleTabletFeatures() {
   const [current, setCurrent] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [direction, setDirection] = useState<"left" | "right" | null>(null);
@@ -504,7 +517,7 @@ function AppleTabletFeatures() {
 
   const triggerTransition = (
     dir: "left" | "right",
-    getNext: (prev: number) => number,
+    getNext: (prev: number) => number
   ) => {
     setDirection(dir);
     setIsAnimating(true);
@@ -525,10 +538,7 @@ function AppleTabletFeatures() {
   const prev = () => {
     if (isAnimating) return;
     if (autoRotateRef.current) clearTimeout(autoRotateRef.current);
-    triggerTransition(
-      "left",
-      (p) => (p - 1 + FEATURES.length) % FEATURES.length,
-    );
+    triggerTransition("left", (p) => (p - 1 + FEATURES.length) % FEATURES.length);
     scheduleRotate();
   };
 
@@ -544,27 +554,26 @@ function AppleTabletFeatures() {
       id="features"
       style={{
         width: "100%",
-        minHeight: "calc(100vh - 80px)",
+        minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "100px 50px 80px 50px",
-        background:
-          "linear-gradient(135deg, #f0f4ff 0%, #ffffff 50%, #f8faff 100%)",
+        padding: "60px 20px",
+        background: "linear-gradient(135deg, #f0f4ff 0%, #ffffff 50%, #f8faff 100%)",
         position: "relative",
         overflow: "hidden",
       }}
     >
+      {/* Subtle background orbs */}
       <div
         style={{
           position: "absolute",
           top: "-10%",
           right: "-5%",
-          width: "500px",
-          height: "500px",
+          width: "400px",
+          height: "400px",
           borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(0,123,255,0.07) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(0,123,255,0.07) 0%, transparent 70%)",
           pointerEvents: "none",
         }}
       />
@@ -573,52 +582,51 @@ function AppleTabletFeatures() {
           position: "absolute",
           bottom: "5%",
           left: "-8%",
-          width: "450px",
-          height: "450px",
+          width: "350px",
+          height: "350px",
           borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(0,123,255,0.05) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(0,123,255,0.05) 0%, transparent 70%)",
           pointerEvents: "none",
         }}
       />
 
-      {/* Tablet Frame - Thicker bezel */}
+      {/* ── Apple Tablet Frame ── */}
       <div
         style={{
           width: "100%",
-          maxWidth: "1200px",
-          height: "600px",
+          maxWidth: "900px",
+          /* Tablet outer shell */
           background: "#1a1a1a",
-          borderRadius: "48px",
-          padding: "40px 24px 45px 24px",
+          borderRadius: "28px",
+          padding: "16px",
           boxShadow:
-            "0 60px 120px rgba(0,0,0,0.3), 0 12px 36px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)",
+            "0 40px 100px rgba(0,0,0,0.22), 0 8px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.08)",
           position: "relative",
         }}
       >
-        {/* Camera dot - larger for thicker bezel */}
+        {/* Camera dot */}
         <div
           style={{
             position: "absolute",
-            top: "18px",
+            top: "10px",
             left: "50%",
             transform: "translateX(-50%)",
-            width: "12px",
-            height: "12px",
+            width: "8px",
+            height: "8px",
             borderRadius: "50%",
             background: "#2d2d2d",
-            border: "2px solid #444",
+            border: "1.5px solid #333",
             zIndex: 20,
           }}
         />
 
-        {/* Screen */}
+        {/* Screen bezel */}
         <div
           style={{
             background: "#fff",
-            borderRadius: "32px",
+            borderRadius: "16px",
             overflow: "hidden",
-            height: "100%",
+            minHeight: "420px",
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
           }}
@@ -631,11 +639,12 @@ function AppleTabletFeatures() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              padding: "40px 24px",
+              padding: "28px 16px 24px",
               position: "relative",
               overflow: "hidden",
             }}
           >
+            {/* Subtle inner shadow edges */}
             <div
               style={{
                 position: "absolute",
@@ -674,14 +683,14 @@ function AppleTabletFeatures() {
           </div>
         </div>
 
-        {/* Home button indicator - larger for thicker bezel */}
+        {/* Home button indicator line */}
         <div
           style={{
-            width: "44px",
-            height: "5px",
+            width: "36px",
+            height: "4px",
             background: "#333",
-            borderRadius: "6px",
-            margin: "16px auto 0",
+            borderRadius: "4px",
+            margin: "10px auto 0",
           }}
         />
       </div>
@@ -689,201 +698,42 @@ function AppleTabletFeatures() {
   );
 }
 
-/* ─── Homepage ────────────────────────────────────────────────── */
-export default function Homepage() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const featuresRef = useRef<HTMLDivElement>(null);
+export default AppleTabletFeatures;
 
-  useEffect(() => {
-    const onScroll = () => {
-      const progress = Math.min(window.scrollY / (window.innerHeight * 0.5), 1);
-      setScrollProgress(progress);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+/* ─────────────────────────────────────────────────────────────────
+   INTEGRATION GUIDE FOR Homepage.tsx
+   ─────────────────────────────────────────────────────────────────
 
-  const heroOpacity = Math.max(1 - scrollProgress * 1.4, 0);
-  const featuresOpacity = Math.min((scrollProgress - 0.5) * 3, 1);
-  const showFeatures = scrollProgress >= 0.5;
+   1. Import at top of Homepage.tsx:
+        import { AppleTabletFeatures } from "./AppleTabletFeatures";
+        (adjust path as needed)
 
-  return (
-    <div className="relative">
-      {/* Fixed Navbar */}
-      <nav className="fixed top-0 left-0 w-full flex items-center justify-between px-4 sm:px-6 md:px-8 py-3 md:py-4 border-b border-gray-200 bg-white z-50 shadow-sm">
-        <div className="flex items-center gap-2 md:gap-3">
-          <img
-            src={logo}
-            alt="SXaint logo"
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover"
-            style={{
-              borderRadius: "50px",
-            }}
-          />
-          <span className="hidden sm:inline text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[#007bff] to-[#0056b3] bg-clip-text text-transparent tracking-tight">
-            SXaint
-          </span>
-        </div>
+   2. DELETE:
+        - The entire FeatureCard component definition
+        - The entire <div id="features" …>…</div> section
 
-        <div className="hidden md:flex items-center gap-5 lg:gap-6">
-          {NAV_LINKS.map(({ href, Icon }) => (
-            <a
-              key={href}
-              href={href}
-              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#007bff] transition-colors duration-200"
-            >
-              <Icon size={16} />
-            </a>
-          ))}
-          <button className="flex items-center gap-2 px-5 py-2 rounded-lg text-white text-sm font-semibold bg-[#007bff] hover:bg-[#0056b3] transition-all duration-200 hover:scale-105 active:scale-95">
-            Get Started <ArrowRight size={16} />
-          </button>
-        </div>
-
-        <button
-          className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          onClick={() => setMobileOpen(true)}
-        >
-          <Menu size={24} className="text-gray-700" />
-        </button>
-      </nav>
-
-      {/* Mobile slide-out menu */}
-      <div
-        className={`fixed inset-0 bg-black/50 z-50 transition-all duration-300 ${mobileOpen ? "opacity-100 visible" : "opacity-0 invisible"}`}
-        onClick={() => setMobileOpen(false)}
-      >
-        <div
-          className={`fixed top-0 right-0 w-4/5 max-w-sm h-full bg-white shadow-2xl flex flex-col p-6 transition-transform duration-300 ${mobileOpen ? "translate-x-0" : "translate-x-full"}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            className="self-end p-2 hover:bg-gray-100 rounded-lg"
-            onClick={() => setMobileOpen(false)}
-          >
-            <X size={24} className="text-gray-700" />
-          </button>
-          <nav className="flex flex-col gap-2 mt-6">
-            {NAV_LINKS.map(({ href, Icon }) => (
-              <a
-                key={href}
-                href={href}
-                className="flex items-center gap-3 text-base font-medium text-gray-800 py-3 px-4 hover:bg-gray-50 hover:text-[#007bff] rounded-xl transition-colors"
-                onClick={() => setMobileOpen(false)}
-              >
-                <Icon size={18} />
-              </a>
-            ))}
-            <button
-              className="flex items-center justify-center gap-2 mt-4 px-6 py-3 rounded-xl text-white bg-[#007bff] hover:bg-[#0056b3] font-semibold"
-              onClick={() => setMobileOpen(false)}
-            >
-              Get Started <ArrowRight size={18} />
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      {/* HERO — fixed, fades out on scroll, with padding for fixed navbar */}
-      <div
-        className="fixed top-0 left-0 w-full h-screen overflow-hidden z-10"
-        style={{
-          opacity: heroOpacity,
-          pointerEvents: heroOpacity > 0.05 ? "auto" : "none",
-          paddingTop: "65px",
-        }}
-      >
-        {/* Video background */}
-        <main className="relative h-full overflow-hidden">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          >
-            <source src={sxaint_promo_hp} type="video/mp4" />
-          </video>
-
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
-
-          <div className="relative z-10 h-full flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-20">
-            <div className="max-w-3xl">
-              <span className="inline-block text-xs font-bold tracking-widest text-blue-300 uppercase mb-4">
-                Assessment Platform
-              </span>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight mb-4">
-                Evidence-Based Strategies
-                <br className="hidden sm:block" /> for Lasting Change
-              </h1>
-              <p className="text-lg sm:text-xl text-white/80 max-w-xl mb-8 leading-relaxed">
-                Build resilience, overcome challenges — your path to emotional
-                balance starts here.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button className="flex items-center gap-2 px-6 py-3 bg-[#007bff] hover:bg-[#0056b3] text-white font-semibold rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30">
-                  Get Started <ArrowRight size={16} />
-                </button>
-                <button className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-sm border border-white/30 transition-all backdrop-blur-sm">
-                  Watch Demo
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10">
-            <span className="text-white/70 text-xs tracking-wider uppercase">
-              Scroll to explore
-            </span>
-            <div className="w-5 h-8 border-2 border-white/50 rounded-full flex justify-center pt-1.5">
-              <div className="w-1 h-1.5 bg-white rounded-full animate-scroll" />
-            </div>
-          </div>
-        </main>
-      </div>
-
-      {/* Spacer so features start below the viewport */}
-      <div className="h-[300px]" />
-
-      {/* Features Section */}
-      <div
-        ref={featuresRef}
-        style={{
-          opacity: featuresOpacity,
-          pointerEvents: showFeatures ? "auto" : "none",
-          transition: "opacity 0.3s ease",
-        }}
-      >
+   3. REPLACE with:
         <AppleTabletFeatures />
-      </div>
 
-      {/* Chat support button */}
-      <button
-        className="fixed bottom-5 right-5 sm:bottom-7 sm:right-7 z-50 transition-transform hover:scale-110 active:scale-95"
-        style={{
-          width: "52px",
-          height: "52px",
-          borderRadius: "50%",
-          background: "rgba(0,0,0,0.75)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: "none",
-          cursor: "pointer",
-        }}
-        aria-label="Open support chat"
-      >
-        <MessageCircle size={22} fill="white" stroke="white" />
-      </button>
+   4. You can REMOVE these state variables from Homepage (they now live
+      inside AppleTabletFeatures):
+        - currentFeature
+        - isAnimating
+        - autoRotateRef
+        - transition / goTo / prev / next helpers
 
-      <style>{`
-        @keyframes scroll {
-          0%   { transform: translateY(0);  opacity: 1; }
-          100% { transform: translateY(8px); opacity: 0; }
-        }
-        .animate-scroll { animation: scroll 1.5s ease-in-out infinite; }
-      `}</style>
-    </div>
-  );
-}
+   5. Keep the hero section, navbar, spacer div, and floating chat button
+      exactly as-is. The navbar uses z-50 (z-index:50) and the chat button
+      uses z-50 — both will render above the features tablet.
+
+   6. The <div className="h-[300px]" /> spacer between the hero and features
+      can be adjusted or removed depending on your scroll reveal preference.
+
+   7. Responsive note:
+      The tablet frame uses a 2-column grid. On small screens (< 640px) you
+      may want to stack the columns. Add this to AppleTabletFeatures:
+        @media (max-width: 640px) { grid-template-columns: 1fr }
+      or use the Tailwind class below on the screen div:
+        className="grid grid-cols-1 sm:grid-cols-2"
+      (Replace the inline gridTemplateColumns style with that className.)
+   ───────────────────────────────────────────────────────────────── */
