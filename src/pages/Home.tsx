@@ -823,7 +823,14 @@ export default function Homepage() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <button className="flex items-center gap-2 px-6 py-3 bg-[#007bff] hover:bg-[#0056b3] text-white font-semibold rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30">
-                  Get Started <ArrowRight size={16} />
+                  Price.Buy{" "}
+                  <Banknote
+                    size={20}
+                    style={{
+                      position: "relative",
+                      top: "2px",
+                    }}
+                  />
                 </button>
                 <button className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-sm border border-white/30 transition-all backdrop-blur-sm">
                   Watch Demo
