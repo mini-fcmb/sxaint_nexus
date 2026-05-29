@@ -11,9 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import logo from "../assets/logo.png";
 import sxaint_promo_hp from "../assets/mp4_files/sxaint_promo_hp.mp4.mp4";
+import image from "../assets/gadget.png";
 
 /* ─── Data ───────────────────────────────────────────────────────── */
 const FEATURES = [
@@ -79,10 +80,275 @@ const FEATURES = [
 
 const NAV_LINKS = [
   { href: "#features", Icon: Sparkles },
-  { href: "#pricing", Icon: Banknote },
+  { href: "#stats", Icon: Banknote },
   { href: "#about", Icon: Info },
   { href: "#contact", Icon: Mail },
 ];
+
+/* ─── Easing for CountUp ───────────────────────────────────────── */
+const easeOutExpo = (t: number) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
+
+/* ─── CountUp Hook ──────────────────────────────────────────────── */
+function useCountUp(
+  start: number,
+  end: number,
+  duration: number,
+  active: boolean,
+) {
+  const [value, setValue] = useState(start);
+  const raf = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+
+    const t0 = performance.now();
+
+    const tick = (now: number) => {
+      const t = Math.min((now - t0) / duration, 1);
+      setValue(Math.round(start + (end - start) * easeOutExpo(t)));
+      if (t < 1) {
+        raf.current = requestAnimationFrame(tick);
+      }
+    };
+
+    raf.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (raf.current) {
+        cancelAnimationFrame(raf.current);
+      }
+    };
+  }, [active, start, end, duration]);
+
+  return value;
+}
+
+/* ─── StatBlock Component ───────────────────────────────────────── */
+function StatBlock({
+  countStart,
+  countEnd,
+  duration,
+  label,
+  active,
+  delay,
+  isLast,
+}: {
+  countStart: number;
+  countEnd: number;
+  duration: number;
+  label: string;
+  active: boolean;
+  delay: string;
+  isLast: boolean;
+}) {
+  const value = useCountUp(countStart, countEnd, duration, active);
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        padding: "50px",
+        position: "relative",
+        overflow: "hidden",
+        borderBottom: !isLast ? "1px solid rgba(0,0,0,.08)" : "none",
+        opacity: active ? 1 : 0,
+        transform: active ? "translateY(0)" : "translateY(25px)",
+        transition: `all .8s ease ${delay}`,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          right: "-10px",
+          bottom: "-25px",
+          fontSize: "clamp(8rem,18vw,15rem)",
+          fontWeight: 900,
+          color: "rgba(0,0,0,.04)",
+          pointerEvents: "none",
+        }}
+      >
+        {value}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          lineHeight: 0.9,
+        }}
+      >
+        <span
+          style={{
+            fontSize: "clamp(6rem,12vw,10rem)",
+            fontWeight: 700,
+            color: "#E8E8E8",
+          }}
+        >
+          {value}
+        </span>
+        <span
+          style={{
+            fontSize: "clamp(3rem,6vw,5rem)",
+            color: "#E8E8E8",
+          }}
+        >
+          %
+        </span>
+      </div>
+
+      <div
+        style={{
+          marginTop: "18px",
+          fontWeight: 700,
+          fontSize: "1rem",
+          color: "#222",
+        }}
+      >
+        {label}
+        <span style={{ marginLeft: "12px" }}>›</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── StatsSection Component ────────────────────────────────────── */
+function StatsSection() {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const trigger = useCallback(() => setVisible(true), []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          trigger();
+          obs.disconnect();
+        }
+      },
+      {
+        threshold: 0.15,
+      },
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [trigger]);
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100vh",
+        padding: "20px",
+        overflow: "hidden",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#FFFFFF",
+      }}
+    >
+      <section
+        ref={ref}
+        id="stats"
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          background: "#FFFFFF",
+          overflow: "hidden",
+          border: "1px solid rgba(0,0,0,.08)",
+        }}
+      >
+        {/* LEFT */}
+        <div
+          style={{
+            position: "relative",
+            background: "#F7F7F7",
+            overflow: "hidden",
+            borderRight: "1px solid rgba(0,0,0,.08)",
+          }}
+        >
+          <h2
+            style={{
+              position: "absolute",
+              top: "50px",
+              left: "50px",
+              zIndex: 10,
+              fontSize: "clamp(2rem,3vw,4rem)",
+              fontWeight: 500,
+              color: "#000",
+            }}
+          >
+            Impact That
+            <br />
+            Speaks for Itself
+          </h2>
+
+          <img
+            src={image}
+            alt=""
+            style={{
+              position: "absolute",
+              width: "72%",
+              height: "72%",
+              objectFit: "contain",
+              left: "50%",
+              top: "58%",
+              transform: "translate(-50%,-50%)",
+              opacity: visible ? 1 : 0,
+              transition: "opacity 1s ease",
+            }}
+          />
+        </div>
+
+        {/* RIGHT */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            background: "#F7F7F7",
+            overflow: "hidden",
+          }}
+        >
+          <StatBlock
+            countStart={15}
+            countEnd={95}
+            duration={3000}
+            label="Improved Student Performance"
+            active={visible}
+            delay="0.1s"
+            isLast={false}
+          />
+          <StatBlock
+            countStart={15}
+            countEnd={90}
+            duration={6000}
+            label="Higher Exam Completion Rate"
+            active={visible}
+            delay="0.25s"
+            isLast={true}
+          />
+        </div>
+
+        <style>{`
+          @media(max-width:800px){
+            #stats{
+              grid-template-columns:1fr;
+            }
+          }
+        `}</style>
+      </section>
+    </div>
+  );
+}
 
 /* ─── ImageCarouselPane ───────────────────────────────────────────── */
 function ImageCarouselPane({
@@ -864,6 +1130,9 @@ export default function Homepage() {
       >
         <AppleTabletFeatures />
       </div>
+
+      {/* Stats Section */}
+      <StatsSection />
 
       {/* Chat support button */}
       <button
